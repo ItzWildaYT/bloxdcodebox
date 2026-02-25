@@ -181,17 +181,36 @@
   </div>
 
 <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
-<script src="https://unpkg.com/prettier@3.2.5/standalone.js"></script>
-<script src="https://unpkg.com/prettier@3.2.5/plugins/babel.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/terser@5.26.0/dist/bundle.min.js"></script>
 
 <script>
-require.config({ paths: { vs: "https://unpkg.com/monaco-editor@0.45.0/min/vs" } });
+require.config({
+  paths: { vs: "https://unpkg.com/monaco-editor@0.45.0/min/vs" }
+});
 
 let editor;
 let files = {};
 let currentFile = null;
 const MAX_CHARS = 16000;
+
+function loadExternalScript(src) {
+  return new Promise(resolve => {
+    const oldDefine = window.define;
+    window.define = undefined;
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => {
+      window.define = oldDefine;
+      resolve();
+    };
+    document.body.appendChild(script);
+  });
+}
+
+async function loadLibraries() {
+  await loadExternalScript("https://unpkg.com/prettier@3.2.5/standalone.js");
+  await loadExternalScript("https://unpkg.com/prettier@3.2.5/plugins/babel.js");
+  await loadExternalScript("https://cdn.jsdelivr.net/npm/terser@5.26.0/dist/bundle.min.js");
+}
 
 async function loadAPIDTS() {
   const res = await fetch("api.d.ts");
@@ -258,12 +277,9 @@ function updateCount() {
 
 async function indentCode() {
   try {
-    const formatted = await prettier.format(editor.getValue(), {
+    const formatted = prettier.format(editor.getValue(), {
       parser: "babel",
-      plugins: prettierPlugins,
-      semi: true,
-      singleQuote: false,
-      tabWidth: 2
+      plugins: prettierPlugins
     });
     editor.setValue(formatted);
   } catch (e) {
@@ -318,17 +334,14 @@ function updateErrors() {
 
 require(["vs/editor/editor.main"], async function () {
 
+  await loadLibraries();
+
   monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.ES2020,
     allowNonTsExtensions: true,
     checkJs: true,
     strict: true,
     noEmit: true
-  });
-
-  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-    noSemanticValidation: false,
-    noSyntaxValidation: false
   });
 
   await loadAPIDTS();
@@ -365,13 +378,11 @@ require(["vs/editor/editor.main"], async function () {
 
 document.getElementById("newFile").onclick = newFile;
 document.getElementById("saveAll").onclick = saveStorage;
-
 document.getElementById("toolsBtn").onclick = () => {
   const menu = document.getElementById("dropdownMenu");
   menu.style.display =
     menu.style.display === "flex" ? "none" : "flex";
 };
-
 document.getElementById("indentBtn").onclick = indentCode;
 document.getElementById("minifyBtn").onclick = minifyCode;
 document.getElementById("optimizeBtn").onclick = optimizeCode;
