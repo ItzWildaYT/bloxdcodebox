@@ -1,11 +1,7 @@
-declare const api:{
+sendMessage(entityId: string, message: string, options?: { color?: string }): void
+setPosition(entityId: string, x: number, y: number, z: number): void
+getPosition(entityId: string): { x: number, y: number, z: number }
 
-  sendMessage(msg:string):void
-  getPosition(id:string):[number,number,number]
-  teleport(id:string,x:number,y:number,z:number):void
-
-}
-
-declare function onPlayerJoin(id:string):void
-declare function onPlayerLeave(id:string):void
-declare function onTick():void
+onPlayerJoin(callback: (playerId: string) => void): void
+onPlayerLeave(callback: (playerId: string) => void): void
+onPlayerChat(callback: (playerId: string, message: string) => void): void
