@@ -200,8 +200,7 @@
       const apiContentPromises = apiFiles.map(url => fetch(url).then(res => res.text()));
       const apiContents = await Promise.all(apiContentPromises);
 
-      let apiText = apiContents.join('
-');
+      let apiText = apiContents.join('\n');
       return apiText;
     }
 
