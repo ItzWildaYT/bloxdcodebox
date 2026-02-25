@@ -2,89 +2,150 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Bloxd Enterprise Cloud IDE</title>
+<title>Bloxd CodeBox IDE</title>
 <style>
 html,body{
 margin:0;
 height:100%;
-background:#0c0c0c;
-color:#e6e6e6;
+background:#0b0b0b;
+color:#e5e5e5;
 font-family:Inter,Segoe UI,Arial;
 overflow:hidden
 }
-#layout{
+#app{
 display:flex;
 flex-direction:column;
 height:100%
 }
 #topbar{
-height:48px;
+height:52px;
 background:#111;
 display:flex;
 align-items:center;
 padding:0 20px;
-border-bottom:1px solid #1e1e1e
+border-bottom:1px solid #1f1f1f;
+gap:12px
 }
 #brand{
 font-weight:600;
-letter-spacing:.5px;
 font-size:15px
 }
-#status{
-margin-left:auto;
-font-size:12px;
-opacity:.7
+.button{
+background:#1a1a1a;
+border:1px solid #262626;
+color:#fff;
+padding:6px 12px;
+border-radius:6px;
+cursor:pointer;
+font-size:12px
 }
+.button:hover{background:#222}
+#dropdown{
+position:relative
+}
+#dropdownMenu{
+position:absolute;
+top:40px;
+left:0;
+background:#111;
+border:1px solid #222;
+display:none;
+flex-direction:column;
+min-width:180px;
+z-index:10
+}
+.dropdownItem{
+padding:8px 12px;
+cursor:pointer;
+font-size:12px
+}
+.dropdownItem:hover{background:#222}
+#tabs{
+height:38px;
+background:#0f0f0f;
+display:flex;
+align-items:center;
+border-bottom:1px solid #1f1f1f;
+overflow-x:auto
+}
+.tab{
+padding:6px 14px;
+font-size:12px;
+cursor:pointer;
+border-right:1px solid #1f1f1f
+}
+.tab.active{background:#1a1a1a}
 #main{
 flex:1;
 display:flex;
 overflow:hidden
 }
-#sidebar{
-width:260px;
-background:#0f0f0f;
-border-right:1px solid #1e1e1e;
+#editor{
+flex:1
+}
+#errorPanel{
+width:320px;
+background:#0e0e0e;
+border-left:1px solid #1f1f1f;
 display:flex;
 flex-direction:column
 }
-#apiList{
+#errorHeader{
+padding:10px;
+font-size:12px;
+border-bottom:1px solid #1f1f1f
+}
+#errorList{
 flex:1;
 overflow:auto;
+font-size:12px;
 padding:10px
 }
-.apiItem{
-padding:6px 8px;
-font-size:12px;
-cursor:pointer;
-border-radius:6px
+.errorItem{
+margin-bottom:6px;
+color:#ff6b6b
 }
-.apiItem:hover{
-background:#1a1a1a
-}
-#editorContainer{
-flex:1;
-position:relative
-}
-#editor{
-position:absolute;
-inset:0
+#footer{
+height:28px;
+background:#111;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:11px;
+border-top:1px solid #1f1f1f
 }
 </style>
 </head>
 <body>
-<div id="layout">
+
+<div id="app">
 <div id="topbar">
-<div id="brand">Bloxd Enterprise Cloud IDE</div>
-<div id="status">Booting...</div>
+<div id="brand">Bloxd CodeBox IDE</div>
+<button class="button" id="newFile">New File</button>
+<button class="button" id="saveAll">Save</button>
+
+<div id="dropdown">
+<button class="button" id="toolsBtn">Tools ▾</button>
+<div id="dropdownMenu">
+<div class="dropdownItem" id="minifyBtn">Minimize JS</div>
+<div class="dropdownItem" id="optimizeBtn">Optimize</div>
 </div>
+</div>
+
+<div style="margin-left:auto;font-size:12px" id="charCount">0 / 16000</div>
+</div>
+
+<div id="tabs"></div>
+
 <div id="main">
-<div id="sidebar">
-<div id="apiList"></div>
-</div>
-<div id="editorContainer">
 <div id="editor"></div>
+<div id="errorPanel">
+<div id="errorHeader">Errors</div>
+<div id="errorList"></div>
 </div>
 </div>
+
+<div id="footer">© BloxdZeno</div>
 </div>
 
 <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
@@ -92,170 +153,88 @@ inset:0
 
 require.config({paths:{vs:'https://unpkg.com/monaco-editor@0.45.0/min/vs'}})
 
-const REPO_ROOT="https://api.github.com/repos/Bloxdy/code-api/contents"
-const CACHE_KEY="bloxd_enterprise_v3_cache"
+let editor
+let files={}
+let currentFile=null
+const MAX_CHARS=16000
 
-async function crawlRepo(path=""){
-const url=path?`${REPO_ROOT}/${path}`:REPO_ROOT
-const res=await fetch(url)
-if(!res.ok) throw new Error("GitHub API error")
-const entries=await res.json()
-let files=[]
-for(const entry of entries){
-if(entry.type==="file" && entry.name.endsWith(".md")) files.push(entry.download_url)
-if(entry.type==="dir"){
-const nested=await crawlRepo(entry.path)
-files=files.concat(nested)
-}
-}
-return files
+function saveToStorage(){
+localStorage.setItem("bloxd_files",JSON.stringify(files))
 }
 
-async function fetchMarkdown(){
-if(localStorage.getItem(CACHE_KEY)) return localStorage.getItem(CACHE_KEY)
-const files=await crawlRepo()
-let combined=""
-for(const file of files){
-const r=await fetch(file+"?"+Date.now())
-combined+=await r.text()+"\n"
-}
-localStorage.setItem(CACHE_KEY,combined)
-return combined
+function loadFromStorage(){
+const data=localStorage.getItem("bloxd_files")
+if(data) files=JSON.parse(data)
+else files={"main.js":""}
 }
 
-function buildAPIIndex(markdown){
-
-const lines=markdown.split("\n")
-const methods={}
-const callbacks={}
-let docBuffer=[]
-
-function commitMethod(name,params){
-if(!methods[name]){
-methods[name]={
-name,
-params,
-doc:docBuffer.join(" ").trim(),
-returns:"any"
-}
-}
-docBuffer=[]
+function renderTabs(){
+const tabs=document.getElementById("tabs")
+tabs.innerHTML=""
+Object.keys(files).forEach(name=>{
+const t=document.createElement("div")
+t.className="tab"+(name===currentFile?" active":"")
+t.textContent=name
+t.onclick=()=>switchFile(name)
+tabs.appendChild(t)
+})
 }
 
-for(let line of lines){
-
-let trimmed=line.trim()
-
-if(trimmed.startsWith("##")||trimmed.startsWith("###")) docBuffer=[]
-
-if(trimmed.length>0 && !trimmed.startsWith("```")) docBuffer.push(trimmed)
-
-let match1=trimmed.match(/api\.(\w+)\((.*?)\)/)
-if(match1){
-commitMethod(match1[1],parseParams(match1[2]))
-continue
+function switchFile(name){
+currentFile=name
+editor.setValue(files[name])
+renderTabs()
+updateCount()
 }
 
-let match2=trimmed.match(/^(\w+)\((.*?)\)/)
-if(match2){
-let name=match2[1]
-if(name.startsWith("on")){
-callbacks[name]={name,doc:docBuffer.join(" ").trim()}
-}else{
-commitMethod(name,parseParams(match2[2]))
+function newFile(){
+let name="file"+Object.keys(files).length+".js"
+files[name]=""
+currentFile=name
+renderTabs()
+editor.setValue("")
+saveToStorage()
 }
-continue
+
+function updateCount(){
+const len=editor.getValue().length
+document.getElementById("charCount").textContent=len+" / "+MAX_CHARS
+if(len>MAX_CHARS){
+editor.setValue(editor.getValue().slice(0,MAX_CHARS))
 }
 }
 
-return {methods:Object.values(methods),callbacks:Object.values(callbacks)}
+function minifyJS(code){
+return code
+.replace(/\/\/.*$/gm,"")
+.replace(/\s+/g," ")
+.replace(/\s*([\{\}\(\)\=\;\,\+\-\*\/])\s*/g,"$1")
+.trim()
 }
 
-function parseParams(raw){
-return raw.split(",").map(p=>{
-let clean=p.trim()
-if(!clean) return null
-return {name:clean.split(":")[0].trim(),type:"any"}
-}).filter(Boolean)
+function optimizeJS(code){
+let optimized=code
+optimized=minifyJS(optimized)
+optimized=optimized.replace(/var /g,"let ")
+optimized=optimized.replace(/==/g,"===")
+optimized=optimized.replace(/!=/g,"!==")
+return optimized
 }
 
-function generateDTS(index){
-let out="declare const api:{\n"
-for(const m of index.methods){
-out+=`
-/** ${m.doc||"Bloxd API Method"} */
-${m.name}(${m.params.map(p=>p.name+": "+p.type).join(", ")}): ${m.returns}
-`
-}
-out+="}\n\n"
-for(const cb of index.callbacks){
-out+=`declare function ${cb.name}(playerId:string):void\n`
-}
-return out
-}
-
-function populateSidebar(index,editor){
-const list=document.getElementById("apiList")
+function updateErrors(){
+const model=editor.getModel()
+const markers=monaco.editor.getModelMarkers({resource:model.uri})
+const list=document.getElementById("errorList")
 list.innerHTML=""
-index.methods.forEach(m=>{
+markers.forEach(m=>{
 const div=document.createElement("div")
-div.className="apiItem"
-div.textContent=m.name
-div.onclick=()=>{
-editor.trigger("keyboard","type",{text:`api.${m.name}(`})
-}
+div.className="errorItem"
+div.textContent="Line "+m.startLineNumber+": "+m.message
 list.appendChild(div)
 })
 }
 
-function registerCompletion(index){
-
-monaco.languages.registerCompletionItemProvider("javascript",{
-triggerCharacters:["."],
-provideCompletionItems(model,pos){
-
-const text=model.getValueInRange({
-startLineNumber:pos.lineNumber,
-startColumn:1,
-endLineNumber:pos.lineNumber,
-endColumn:pos.column
-})
-
-if(!text.includes("api.")) return {suggestions:[]}
-
-const suggestions=index.methods.map(m=>{
-const snippet=m.params.map((p,i)=>`\${${i+1}:${p.name}}`).join(", ")
-return{
-label:m.name,
-kind:monaco.languages.CompletionItemKind.Method,
-insertText:`${m.name}(${snippet})`,
-insertTextRules:monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-documentation:m.doc||"Bloxd API Method"
-}
-})
-
-return {suggestions}
-}
-})
-
-monaco.languages.registerHoverProvider("javascript",{
-provideHover(model,pos){
-const word=model.getWordAtPosition(pos)
-if(!word) return
-const method=index.methods.find(m=>m.name===word.word)
-if(!method) return
-return{
-contents:[
-{value:`**${method.name}**`},
-{value:method.doc||"Bloxd API Method"}
-]
-}
-}
-})
-
-}
-
-require(['vs/editor/editor.main'],async()=>{
+require(['vs/editor/editor.main'],()=>{
 
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
 target:monaco.languages.typescript.ScriptTarget.ES2020,
@@ -264,40 +243,48 @@ checkJs:true,
 strict:true
 })
 
-document.getElementById("status").textContent="Fetching GitHub API..."
-
-let markdown
-try{
-markdown=await fetchMarkdown()
-}catch(e){
-document.getElementById("status").textContent="GitHub API Failed"
-return
-}
-
-const index=buildAPIIndex(markdown)
-const dts=generateDTS(index)
-
-monaco.languages.typescript.javascriptDefaults.addExtraLib(dts,"bloxd_api.d.ts")
-
-const editor=monaco.editor.create(document.getElementById("editor"),{
+editor=monaco.editor.create(document.getElementById("editor"),{
 value:"",
 language:"javascript",
 theme:"vs-dark",
 automaticLayout:true,
-fontSize:14,
 minimap:{enabled:false},
+fontSize:14,
 quickSuggestions:true,
 suggestOnTriggerCharacters:true,
 parameterHints:{enabled:true},
 autoClosingBrackets:"always"
 })
 
-populateSidebar(index,editor)
-registerCompletion(index)
+editor.onDidChangeModelContent(()=>{
+files[currentFile]=editor.getValue()
+updateCount()
+saveToStorage()
+updateErrors()
+})
 
-document.getElementById("status").textContent="Enterprise API Indexed ✓"
+loadFromStorage()
+currentFile=Object.keys(files)[0]
+renderTabs()
+switchFile(currentFile)
 
 })
+
+document.getElementById("newFile").onclick=newFile
+document.getElementById("saveAll").onclick=saveToStorage
+
+document.getElementById("toolsBtn").onclick=()=>{
+const menu=document.getElementById("dropdownMenu")
+menu.style.display=menu.style.display==="flex"?"none":"flex"
+}
+
+document.getElementById("minifyBtn").onclick=()=>{
+editor.setValue(minifyJS(editor.getValue()))
+}
+
+document.getElementById("optimizeBtn").onclick=()=>{
+editor.setValue(optimizeJS(editor.getValue()))
+}
 
 </script>
 </body>
