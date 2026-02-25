@@ -51,82 +51,26 @@ document.addEventListener("DOMContentLoaded",()=>{
 let editor1;
 let editor2;
 
-require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
+require.config({
+paths:{vs:'https://unpkg.com/monaco-editor@0.45.0/min/vs'}
+});
 
-const CDN="https://cdn.jsdelivr.net/gh/Bloxdy/code-api@main/";
+async function loadAPI(){
 
-const FILES=[
-"README.md",
-"CALLBACKS.md",
-"CLIENT_OPTIONS.md"
-];
+const r=await fetch("./api.d.ts?"+Date.now());
 
-async function loadDocs(){
+if(!r.ok) return "";
 
-let cache=localStorage.getItem("bloxd_api_docs");
-
-if(cache) return cache;
-
-let out="";
-
-for(const f of FILES){
-
-const r=await fetch(CDN+f);
-
-if(!r.ok) continue;
-
-out+=await r.text()+"\n";
-}
-
-localStorage.setItem("bloxd_api_docs",out);
-
-return out;
-}
-
-function buildTypes(md){
-
-const fn=/([a-zA-Z_][a-zA-Z0-9_]*)\s*\(([^)]*)\)/g;
-
-let api="declare const api:{\n";
-let cb="";
-
-let m;
-
-while(m=fn.exec(md)){
-
-const name=m[1];
-const args=m[2];
-
-if(name.startsWith("on")){
-cb+=`declare function ${name}(${args}):void\n`;
-}else{
-api+=`${name}(${args}):any\n`;
-}
-}
-
-api+="}\n";
-
-return`
-
-declare const myId:string
-declare const playerId:string
-
-${api}
-
-${cb}
-
-`;
+return await r.text();
 }
 
 async function setupAPI(){
 
-const docs=await loadDocs();
-
-const defs=buildTypes(docs);
+const defs=await loadAPI();
 
 monaco.languages.typescript.javascriptDefaults.addExtraLib(
 defs,
-"bloxd.d.ts"
+"bloxd_api.d.ts"
 );
 
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -134,27 +78,32 @@ target:monaco.languages.typescript.ScriptTarget.ES2020,
 allowNonTsExtensions:true,
 noLib:true
 });
+
 }
 
-require(['vs/editor/editor.main'], async function () {
+require(['vs/editor/editor.main'], async ()=>{
 
 await setupAPI();
 
-editor1 = monaco.editor.create(document.getElementById('editor1'), {
-value: "Write something here...",
-language: 'javascript',
-theme: 'vs-dark',
-automaticLayout: true,
+editor1 = monaco.editor.create(
+document.getElementById('editor1'),
+{
+value:"Write something here...",
+language:'javascript',
+theme:'vs-dark',
+automaticLayout:true,
 minimap:{enabled:false},
 fontSize:16,
 scrollBeyondLastLine:false
 });
 
-editor2 = monaco.editor.create(document.getElementById('editor2'), {
-value: "function world(){\n  console.log('World Code');\n}",
-language: 'javascript',
-theme: 'vs-dark',
-automaticLayout: true,
+editor2 = monaco.editor.create(
+document.getElementById('editor2'),
+{
+value:"function world(){}",
+language:'javascript',
+theme:'vs-dark',
+automaticLayout:true,
 minimap:{enabled:false},
 fontSize:16,
 scrollBeyondLastLine:false
@@ -162,24 +111,23 @@ scrollBeyondLastLine:false
 
 });
 
-const openBtn=document.getElementById("openWorldCode");
-const closeBtn=document.getElementById("closeWorldCode");
+document.getElementById("openWorldCode").onclick=()=>{
 
-if(openBtn){
-openBtn.onclick=()=>{
 document.getElementById("normalBoard").style.display="none";
 document.getElementById("codeBoard").style.display="block";
-setTimeout(()=>editor2?.layout(),100);
-};
-}
 
-if(closeBtn){
-closeBtn.onclick=()=>{
+setTimeout(()=>editor2.layout(),50);
+
+};
+
+document.getElementById("closeWorldCode").onclick=()=>{
+
 document.getElementById("codeBoard").style.display="none";
 document.getElementById("normalBoard").style.display="block";
-setTimeout(()=>editor1?.layout(),100);
+
+setTimeout(()=>editor1.layout(),50);
+
 };
-}
 
 });
 </script>
