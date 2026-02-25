@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>WriteOnBoard Test</title>
+
+<style>
+body{
+  background:#1e1e1e;
+  font-family:Arial, sans-serif;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:40px;
+  color:white;
+}
+
+.WriteOnBoardWrapper{
+  position:relative;
+  width:600px;
+  height:350px;
+  background:#2b2b2b;
+  border-radius:8px;
+  overflow:hidden;
+  margin-bottom:15px;
+}
+
+.WriteOnBoardImg{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  opacity:0.05;
+  pointer-events:none;
+}
+
+.WriteOnBoardTextSizeButtons{
+  display:flex;
+  gap:10px;
+}
+
+.NewButton{
+  cursor:pointer;
+  user-select:none;
+}
+
+.ButtonBody{
+  padding:10px 16px;
+  border-radius:6px;
+  font-weight:bold;
+}
+
+.PurpleButton .ButtonBody{
+  background:#7b3fe4;
+}
+
+.BlueButton .ButtonBody{
+  background:#3b82f6;
+}
+
+.DisabledNewButton .ButtonBody{
+  background:#555;
+  cursor:not-allowed;
+}
+
+.editor{
+  width:100%;
+  height:100%;
+}
+</style>
+</head>
+
+<body>
+
+<div id="normalBoard">
+  <div class="WriteOnBoardWrapper">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAICAYAAADA+m62AAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAHklEQVR4nGNY3x/6nxjMQH2Fcyq8/hODaWA11d0IAPvLyX36T0UzAAAAAElFTkSuQmCC" class="WriteOnBoardImg">
+    <div id="editor1" class="editor"></div>
+  </div>
+
+  <div class="WriteOnBoardTextSizeButtons">
+    <div class="NewButton PurpleButton">
+      <div class="ButtonBody">More Info</div>
+    </div>
+
+    <div class="NewButton BlueButton DisabledNewButton">
+      <div class="ButtonBody">Small</div>
+    </div>
+
+    <div class="NewButton BlueButton">
+      <div class="ButtonBody">Medium</div>
+    </div>
+
+    <div class="NewButton BlueButton">
+      <div class="ButtonBody">Large</div>
+    </div>
+
+    <div id="openWorldCode" class="NewButton PurpleButton">
+      <div class="ButtonBody">World Code</div>
+    </div>
+  </div>
+</div>
+
+<div id="codeBoard" style="display:none;">
+  <div class="WriteOnBoardWrapper">
+    <div id="editor2" class="editor"></div>
+  </div>
+
+  <div class="WriteOnBoardTextSizeButtons">
+    <div id="closeWorldCode" class="NewButton PurpleButton">
+      <div class="ButtonBody">Back</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script>
+let editor1;
+let editor2;
+
+require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
+
+require(['vs/editor/editor.main'], function () {
+  editor1 = monaco.editor.create(document.getElementById('editor1'), {
+    value: "Write something here...",
+    language: 'javascript',
+    theme: 'vs-dark',
+    automaticLayout: true,
+    minimap:{enabled:false},
+    fontSize:16,
+    scrollBeyondLastLine:false
+  });
+
+  editor2 = monaco.editor.create(document.getElementById('editor2'), {
+    value: "function world(){\n  console.log('World Code');\n}",
+    language: 'javascript',
+    theme: 'vs-dark',
+    automaticLayout: true,
+    minimap:{enabled:false},
+    fontSize:16,
+    scrollBeyondLastLine:false
+  });
+});
+
+document.getElementById("openWorldCode").onclick = function(){
+  document.getElementById("normalBoard").style.display="none";
+  document.getElementById("codeBoard").style.display="block";
+  setTimeout(()=>editor2.layout(),100);
+};
+
+document.getElementById("closeWorldCode").onclick = function(){
+  document.getElementById("codeBoard").style.display="none";
+  document.getElementById("normalBoard").style.display="block";
+  setTimeout(()=>editor1.layout(),100);
+};
+</script>
+
+</body>
+</html>
