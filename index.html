@@ -180,174 +180,201 @@
     <div id="footer">© BloxdZeno</div>
   </div>
 
-  <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+<script src="https://unpkg.com/prettier@3.2.5/standalone.js"></script>
+<script src="https://unpkg.com/prettier@3.2.5/plugins/babel.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/terser@5.26.0/dist/bundle.min.js"></script>
 
-  <script>
-    require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } })
+<script>
+require.config({ paths: { vs: "https://unpkg.com/monaco-editor@0.45.0/min/vs" } });
 
-    let editor;
-    let files = {};
-    let currentFile = null;
-    const MAX_CHARS = 16000;
+let editor;
+let files = {};
+let currentFile = null;
+const MAX_CHARS = 16000;
 
-    async function fetchAPI() {
-      const apiFiles = [
-        "https://raw.githubusercontent.com/Bloxdy/code-api/refs/heads/main/README.md",
-        "https://raw.githubusercontent.com/Bloxdy/code-api/refs/heads/main/CALLBACKS.md",
-        "https://raw.githubusercontent.com/Bloxdy/code-api/refs/heads/main/CLIENT_OPTIONS.md"
-      ];
+async function loadAPIDTS() {
+  const res = await fetch("api.d.ts");
+  let raw = await res.text();
 
-      const apiContentPromises = apiFiles.map(url => fetch(url).then(res => res.text()));
-      const apiContents = await Promise.all(apiContentPromises);
+  if (!raw.includes("declare namespace api")) {
+    raw = "declare namespace api {\n" + raw + "\n}";
+  }
 
-      let apiText = apiContents.join('\n');
-      return apiText;
-    }
+  raw += "\ndeclare const api: typeof api;";
 
-    async function loadAPI() {
-      const apiText = await fetchAPI();
-      monaco.languages.typescript.javascriptDefaults.addExtraLib(apiText, "file:///bloxd_api.d.ts");
-    }
+  monaco.languages.typescript.javascriptDefaults.addExtraLib(
+    raw,
+    "file:///bloxd_api.d.ts"
+  );
+}
 
-    function saveStorage() {
-      localStorage.setItem("bloxd_codebox_files", JSON.stringify(files));
-    }
+function saveStorage() {
+  localStorage.setItem("bloxd_codebox_files", JSON.stringify(files));
+}
 
-    function loadStorage() {
-      const d = localStorage.getItem("bloxd_codebox_files");
-      if (d) files = JSON.parse(d);
-      else files = { "main.js": "" };
-    }
+function loadStorage() {
+  const d = localStorage.getItem("bloxd_codebox_files");
+  files = d ? JSON.parse(d) : { "main.js": "" };
+}
 
-    function renderTabs() {
-      const tabs = document.getElementById("tabs");
-      tabs.innerHTML = "";
-      Object.keys(files).forEach(name => {
-        const tab = document.createElement("div");
-        tab.className = "tab" + (name === currentFile ? " active" : "");
-        tab.textContent = name;
-        tab.onclick = () => switchFile(name);
-        tabs.appendChild(tab);
-      });
-    }
+function renderTabs() {
+  const tabs = document.getElementById("tabs");
+  tabs.innerHTML = "";
+  Object.keys(files).forEach(name => {
+    const tab = document.createElement("div");
+    tab.className = "tab" + (name === currentFile ? " active" : "");
+    tab.textContent = name;
+    tab.onclick = () => switchFile(name);
+    tabs.appendChild(tab);
+  });
+}
 
-    function switchFile(name) {
-      currentFile = name;
-      editor.setValue(files[name]);
-      renderTabs();
-      updateCount();
-    }
+function switchFile(name) {
+  currentFile = name;
+  editor.setValue(files[name]);
+  renderTabs();
+  updateCount();
+}
 
-    function newFile() {
-      let name = "file" + Object.keys(files).length + ".js";
-      files[name] = "";
-      currentFile = name;
-      renderTabs();
-      editor.setValue("");
-      saveStorage();
-    }
+function newFile() {
+  const name = "file" + Object.keys(files).length + ".js";
+  files[name] = "";
+  currentFile = name;
+  renderTabs();
+  editor.setValue("");
+  saveStorage();
+}
 
-    function updateCount() {
-      let len = editor.getValue().length;
-      if (len > MAX_CHARS) {
-        editor.setValue(editor.getValue().slice(0, MAX_CHARS));
-        len = MAX_CHARS;
-      }
-      document.getElementById("charCount").textContent = len + " / " + MAX_CHARS;
-    }
+function updateCount() {
+  let val = editor.getValue();
+  if (val.length > MAX_CHARS) {
+    val = val.slice(0, MAX_CHARS);
+    editor.setValue(val);
+  }
+  document.getElementById("charCount").textContent =
+    val.length + " / " + MAX_CHARS;
+}
 
-    async function indentCode() {
-      try {
-        const formatted = prettier.format(editor.getValue(), {
-          parser: "babel",
-          plugins: prettierPlugins,
-          semi: true,
-          singleQuote: false,
-          tabWidth: 2
-        });
-        editor.setValue(formatted);
-      } catch { }
-    }
-
-    async function minifyCode() {
-      try {
-        const result = await Terser.minify(editor.getValue());
-        if (result.code) editor.setValue(result.code);
-      } catch { }
-    }
-
-    async function optimizeCode() {
-      try {
-        let result = await Terser.minify(editor.getValue(), {
-          compress: {
-            dead_code: true,
-            drop_console: true,
-            passes: 3
-          },
-          mangle: true
-        });
-        if (result.code) editor.setValue(result.code);
-      } catch { }
-    }
-
-    function updateErrors() {
-      const markers = monaco.editor.getModelMarkers({ resource: editor.getModel().uri });
-      const list = document.getElementById("errorList");
-      list.innerHTML = "";
-      markers.forEach(m => {
-        const div = document.createElement("div");
-        div.className = "errorItem";
-        div.textContent = "Line " + m.startLineNumber + ": " + m.message;
-        list.appendChild(div);
-      });
-    }
-
-    require(['vs/editor/editor.main'], () => {
-      monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-        target: monaco.languages.typescript.ScriptTarget.ES2020,
-        allowNonTsExtensions: true,
-        checkJs: true,
-        strict: true
-      });
-
-      loadAPI().then(() => {
-        editor = monaco.editor.create(document.getElementById("editor"), {
-          value: "",
-          language: "javascript",
-          theme: "vs-dark",
-          automaticLayout: true,
-          minimap: { enabled: false },
-          quickSuggestions: true,
-          suggestOnTriggerCharacters: true,
-          parameterHints: { enabled: true },
-          autoClosingBrackets: "always",
-          tabSize: 2,
-          insertSpaces: true
-        });
-
-        editor.onDidChangeModelContent(() => {
-          files[currentFile] = editor.getValue();
-          updateCount();
-          saveStorage();
-          updateErrors();
-        });
-
-        loadStorage();
-        currentFile = Object.keys(files)[0];
-        renderTabs();
-        switchFile(currentFile);
-      });
+async function indentCode() {
+  try {
+    const formatted = await prettier.format(editor.getValue(), {
+      parser: "babel",
+      plugins: prettierPlugins,
+      semi: true,
+      singleQuote: false,
+      tabWidth: 2
     });
+    editor.setValue(formatted);
+  } catch (e) {
+    console.error(e);
+  }
+}
 
-    document.getElementById("newFile").onclick = newFile;
-    document.getElementById("saveAll").onclick = saveStorage;
-    document.getElementById("toolsBtn").onclick = () => {
-      const menu = document.getElementById("dropdownMenu");
-      menu.style.display = menu.style.display === "flex" ? "none" : "flex";
-    };
-    document.getElementById("indentBtn").onclick = indentCode;
-    document.getElementById("minifyBtn").onclick = minifyCode;
-    document.getElementById("optimizeBtn").onclick = optimizeCode;
-  </script>
+async function minifyCode() {
+  try {
+    const result = await Terser.minify(editor.getValue(), {
+      compress: true,
+      mangle: false
+    });
+    if (result.code) editor.setValue(result.code);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+async function optimizeCode() {
+  try {
+    const result = await Terser.minify(editor.getValue(), {
+      compress: {
+        passes: 3,
+        dead_code: true,
+        drop_console: true,
+        drop_debugger: true,
+        unsafe: true
+      },
+      mangle: true
+    });
+    if (result.code) editor.setValue(result.code);
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function updateErrors() {
+  const markers = monaco.editor.getModelMarkers({
+    resource: editor.getModel().uri
+  });
+  const list = document.getElementById("errorList");
+  list.innerHTML = "";
+  markers.forEach(m => {
+    const div = document.createElement("div");
+    div.className = "errorItem";
+    div.textContent =
+      "Line " + m.startLineNumber + ": " + m.message;
+    list.appendChild(div);
+  });
+}
+
+require(["vs/editor/editor.main"], async function () {
+
+  monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+    target: monaco.languages.typescript.ScriptTarget.ES2020,
+    allowNonTsExtensions: true,
+    checkJs: true,
+    strict: true,
+    noEmit: true
+  });
+
+  monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+    noSemanticValidation: false,
+    noSyntaxValidation: false
+  });
+
+  await loadAPIDTS();
+
+  editor = monaco.editor.create(
+    document.getElementById("editor"),
+    {
+      value: "",
+      language: "javascript",
+      theme: "vs-dark",
+      automaticLayout: true,
+      minimap: { enabled: false },
+      quickSuggestions: true,
+      suggestOnTriggerCharacters: true,
+      parameterHints: { enabled: true },
+      autoClosingBrackets: "always",
+      tabSize: 2,
+      insertSpaces: true
+    }
+  );
+
+  editor.onDidChangeModelContent(() => {
+    files[currentFile] = editor.getValue();
+    updateCount();
+    saveStorage();
+    updateErrors();
+  });
+
+  loadStorage();
+  currentFile = Object.keys(files)[0];
+  renderTabs();
+  switchFile(currentFile);
+});
+
+document.getElementById("newFile").onclick = newFile;
+document.getElementById("saveAll").onclick = saveStorage;
+
+document.getElementById("toolsBtn").onclick = () => {
+  const menu = document.getElementById("dropdownMenu");
+  menu.style.display =
+    menu.style.display === "flex" ? "none" : "flex";
+};
+
+document.getElementById("indentBtn").onclick = indentCode;
+document.getElementById("minifyBtn").onclick = minifyCode;
+document.getElementById("optimizeBtn").onclick = optimizeCode;
+</script>
 </body>
 </html>
