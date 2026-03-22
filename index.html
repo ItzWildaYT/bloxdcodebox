@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Bloxd IDE MAX</title>
+<title>Bloxd IDE</title>
 <style>
 body{margin:0;background:#0b0b0b;color:#fff;font-family:Inter}
 #top{height:50px;background:#111;display:flex;align-items:center;padding:0 10px;gap:10px}
@@ -12,44 +12,76 @@ button{background:#222;border:1px solid #333;color:#fff;padding:5px 10px;cursor:
 </head>
 <body>
 <div id="top">
-<button onclick="format()">Format</button>
-<button onclick="save()">Save</button>
+<button id="formatBtn">Format</button>
+<button id="saveBtn">Save</button>
 </div>
 <div id="editor"></div>
 
 <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
 <script>
 require.config({ paths:{vs:"https://unpkg.com/monaco-editor@0.45.0/min/vs"} });
 
+let editor;
+
 require(["vs/editor/editor.main"], async function(){
+
 let raw = await (await fetch("api.d.ts")).text();
 raw = "declare namespace api {\n"+raw+"\n}\ndeclare const api: typeof api;";
-monaco.languages.typescript.javascriptDefaults.addExtraLib(raw,"ts:api.d.ts");
+
+monaco.languages.typescript.javascriptDefaults.addExtraLib(
+  raw,
+  "file:///api.d.ts"
+);
 
 monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-target: monaco.languages.typescript.ScriptTarget.ES2020,
-checkJs:true,
-strict:true
+  target: monaco.languages.typescript.ScriptTarget.ES2020,
+  allowNonTsExtensions:true,
+  checkJs:true,
+  strict:true,
+  noEmit:true
 });
 
-window.editor = monaco.editor.create(document.getElementById("editor"),{
-value:"",
-language:"javascript",
-theme:"vs-dark",
-automaticLayout:true,
-minimap:{enabled:false},
-quickSuggestions:true,
-suggestOnTriggerCharacters:true
+monaco.languages.typescript.javascriptDefaults.setEagerModelSync(true);
+
+const model = monaco.editor.createModel(
+  localStorage.getItem("code") || "",
+  "javascript",
+  monaco.Uri.parse("file:///main.js")
+);
+
+editor = monaco.editor.create(
+  document.getElementById("editor"),
+  {
+    model:model,
+    theme:"vs-dark",
+    automaticLayout:true,
+    minimap:{enabled:false},
+    quickSuggestions:true,
+    suggestOnTriggerCharacters:true,
+    parameterHints:{enabled:true}
+  }
+);
+
+editor.onDidChangeModelContent(() => {
+  localStorage.setItem("code", editor.getValue());
 });
+
 });
 
 function format(){
-editor.setValue(editor.getValue().replace(/;/g,";\n"))
+if(!editor)return;
+editor.setValue(editor.getValue().replace(/;/g,";\n"));
 }
 
 function save(){
-localStorage.setItem("code",editor.getValue())
+if(!editor)return;
+localStorage.setItem("code",editor.getValue());
 }
+
+document.getElementById("formatBtn").onclick = format;
+document.getElementById("saveBtn").onclick = save;
 </script>
+
 </body>
 </html>
