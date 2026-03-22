@@ -1,391 +1,55 @@
-
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Bloxd CodeBox IDE</title>
-
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,
-  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
-  <rect width='100' height='100' fill='%230b0b0b'/>
-  <text x='50%' y='55%' dominant-baseline='middle' text-anchor='middle' font-size='60' fill='%2300ff88' font-family='Arial'>B</text>
-  </svg>">
-
-  <style>
-    html, body {
-      margin: 0;
-      height: 100%;
-      background: #0b0b0b;
-      color: #e6e6e6;
-      font-family: Inter, Segoe UI, Arial;
-      overflow: hidden;
-    }
-    #app {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-    }
-    #topbar {
-      height: 56px;
-      background: #111;
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      border-bottom: 1px solid #1f1f1f;
-      gap: 14px;
-    }
-    #logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 600;
-      font-size: 15px;
-    }
-    #logoBox {
-      width: 28px;
-      height: 28px;
-      background: #00ff88;
-      color: #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 6px;
-      font-weight: 700;
-    }
-    .button {
-      background: #1a1a1a;
-      border: 1px solid #262626;
-      color: #fff;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .button:hover {
-      background: #222;
-    }
-    #dropdown {
-      position: relative;
-    }
-    #dropdownMenu {
-      position: absolute;
-      top: 38px;
-      left: 0;
-      background: #111;
-      border: 1px solid #222;
-      display: none;
-      flex-direction: column;
-      min-width: 200px;
-      z-index: 20;
-    }
-    .dropdownItem {
-      padding: 8px 12px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    .dropdownItem:hover {
-      background: #222;
-    }
-    #charCount {
-      margin-left: auto;
-      font-size: 12px;
-      opacity: .7;
-    }
-    #tabs {
-      height: 38px;
-      background: #0f0f0f;
-      display: flex;
-      align-items: center;
-      border-bottom: 1px solid #1f1f1f;
-      overflow-x: auto;
-    }
-    .tab {
-      padding: 6px 14px;
-      font-size: 12px;
-      cursor: pointer;
-      border-right: 1px solid #1f1f1f;
-    }
-    .tab.active {
-      background: #1a1a1a;
-    }
-    #main {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-    #editor {
-      flex: 1;
-    }
-    #errorPanel {
-      width: 300px;
-      background: #0e0e0e;
-      border-left: 1px solid #1f1f1f;
-      display: flex;
-      flex-direction: column;
-    }
-    #errorHeader {
-      padding: 10px;
-      font-size: 12px;
-      border-bottom: 1px solid #1f1f1f;
-    }
-    #errorList {
-      flex: 1;
-      overflow: auto;
-      font-size: 12px;
-      padding: 10px;
-    }
-    .errorItem {
-      margin-bottom: 6px;
-      color: #ff6b6b;
-    }
-    #footer {
-      height: 28px;
-      background: #111;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      border-top: 1px solid #1f1f1f;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Bloxd IDE MAX</title>
+<style>
+body{margin:0;background:#0b0b0b;color:#fff;font-family:Inter}
+#top{height:50px;background:#111;display:flex;align-items:center;padding:0 10px;gap:10px}
+#editor{height:calc(100vh - 50px)}
+button{background:#222;border:1px solid #333;color:#fff;padding:5px 10px;cursor:pointer}
+</style>
 </head>
-
 <body>
-  <div id="app">
-    <div id="topbar">
-      <div id="logo">
-        <div id="logoBox">B</div>
-        Bloxd CodeBox IDE
-      </div>
-      <button class="button" id="newFile">New</button>
-      <button class="button" id="saveAll">Save</button>
-      <div id="dropdown">
-        <button class="button" id="toolsBtn">Tools ▾</button>
-        <div id="dropdownMenu">
-          <div class="dropdownItem" id="indentBtn">Indent / Format</div>
-          <div class="dropdownItem" id="minifyBtn">Minimize (Terser)</div>
-          <div class="dropdownItem" id="optimizeBtn">Optimize Ultra</div>
-        </div>
-      </div>
-      <div id="charCount">0 / 16000</div>
-    </div>
-    <div id="tabs"></div>
-    <div id="main">
-      <div id="editor"></div>
-      <div id="errorPanel">
-        <div id="errorHeader">Errors</div>
-        <div id="errorList"></div>
-      </div>
-    </div>
-    <div id="footer">© BloxdZeno</div>
-  </div>
+<div id="top">
+<button onclick="format()">Format</button>
+<button onclick="save()">Save</button>
+</div>
+<div id="editor"></div>
 
 <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
-
 <script>
-require.config({
-  paths: { vs: "https://unpkg.com/monaco-editor@0.45.0/min/vs" }
+require.config({ paths:{vs:"https://unpkg.com/monaco-editor@0.45.0/min/vs"} });
+
+require(["vs/editor/editor.main"], async function(){
+let raw = await (await fetch("api.d.ts")).text();
+raw = "declare namespace api {\n"+raw+"\n}\ndeclare const api: typeof api;";
+monaco.languages.typescript.javascriptDefaults.addExtraLib(raw,"ts:api.d.ts");
+
+monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+target: monaco.languages.typescript.ScriptTarget.ES2020,
+checkJs:true,
+strict:true
 });
 
-let editor;
-let files = {};
-let currentFile = null;
-const MAX_CHARS = 16000;
-
-function loadExternalScript(src) {
-  return new Promise(resolve => {
-    const oldDefine = window.define;
-    window.define = undefined;
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => {
-      window.define = oldDefine;
-      resolve();
-    };
-    document.body.appendChild(script);
-  });
-}
-
-async function loadLibraries() {
-  await loadExternalScript("https://unpkg.com/prettier@3.2.5/standalone.js");
-  await loadExternalScript("https://unpkg.com/prettier@3.2.5/plugins/babel.js");
-  await loadExternalScript("https://cdn.jsdelivr.net/npm/terser@5.26.0/dist/bundle.min.js");
-}
-
-async function loadAPIDTS() {
-  const res = await fetch("api.d.ts");
-  let raw = await res.text();
-
-  if (!raw.includes("declare namespace api")) {
-    raw = "declare namespace api {\n" + raw + "\n}";
-  }
-
-  raw += "\ndeclare const api: typeof api;";
-
-  monaco.languages.typescript.javascriptDefaults.addExtraLib(
-    raw,
-    "file:///bloxd_api.d.ts"
-  );
-}
-
-function saveStorage() {
-  localStorage.setItem("bloxd_codebox_files", JSON.stringify(files));
-}
-
-function loadStorage() {
-  const d = localStorage.getItem("bloxd_codebox_files");
-  files = d ? JSON.parse(d) : { "main.js": "" };
-}
-
-function renderTabs() {
-  const tabs = document.getElementById("tabs");
-  tabs.innerHTML = "";
-  Object.keys(files).forEach(name => {
-    const tab = document.createElement("div");
-    tab.className = "tab" + (name === currentFile ? " active" : "");
-    tab.textContent = name;
-    tab.onclick = () => switchFile(name);
-    tabs.appendChild(tab);
-  });
-}
-
-function switchFile(name) {
-  currentFile = name;
-  editor.setValue(files[name]);
-  renderTabs();
-  updateCount();
-}
-
-function newFile() {
-  const name = "file" + Object.keys(files).length + ".js";
-  files[name] = "";
-  currentFile = name;
-  renderTabs();
-  editor.setValue("");
-  saveStorage();
-}
-
-function updateCount() {
-  let val = editor.getValue();
-  if (val.length > MAX_CHARS) {
-    val = val.slice(0, MAX_CHARS);
-    editor.setValue(val);
-  }
-  document.getElementById("charCount").textContent =
-    val.length + " / " + MAX_CHARS;
-}
-
-async function indentCode() {
-  try {
-    const formatted = prettier.format(editor.getValue(), {
-      parser: "babel",
-      plugins: prettierPlugins
-    });
-    editor.setValue(formatted);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function minifyCode() {
-  try {
-    const result = await Terser.minify(editor.getValue(), {
-      compress: true,
-      mangle: false
-    });
-    if (result.code) editor.setValue(result.code);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-async function optimizeCode() {
-  try {
-    const result = await Terser.minify(editor.getValue(), {
-      compress: {
-        passes: 3,
-        dead_code: true,
-        drop_console: true,
-        drop_debugger: true,
-        unsafe: true
-      },
-      mangle: true
-    });
-    if (result.code) editor.setValue(result.code);
-  } catch (e) {
-    console.error(e);
-  }
-}
-
-function updateErrors() {
-  const markers = monaco.editor.getModelMarkers({
-    resource: editor.getModel().uri
-  });
-  const list = document.getElementById("errorList");
-  list.innerHTML = "";
-  markers.forEach(m => {
-    const div = document.createElement("div");
-    div.className = "errorItem";
-    div.textContent =
-      "Line " + m.startLineNumber + ": " + m.message;
-    list.appendChild(div);
-  });
-}
-
-require(["vs/editor/editor.main"], async function () {
-
-  await loadLibraries();
-
-  monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-    target: monaco.languages.typescript.ScriptTarget.ES2020,
-    allowNonTsExtensions: true,
-    checkJs: true,
-    strict: true,
-    noEmit: true
-  });
-
-  await loadAPIDTS();
-
-  editor = monaco.editor.create(
-    document.getElementById("editor"),
-    {
-      value: "",
-      language: "javascript",
-      theme: "vs-dark",
-      automaticLayout: true,
-      minimap: { enabled: false },
-      quickSuggestions: true,
-      suggestOnTriggerCharacters: true,
-      parameterHints: { enabled: true },
-      autoClosingBrackets: "always",
-      tabSize: 2,
-      insertSpaces: true
-    }
-  );
-
-  editor.onDidChangeModelContent(() => {
-    files[currentFile] = editor.getValue();
-    updateCount();
-    saveStorage();
-    updateErrors();
-  });
-
-  loadStorage();
-  currentFile = Object.keys(files)[0];
-  renderTabs();
-  switchFile(currentFile);
+window.editor = monaco.editor.create(document.getElementById("editor"),{
+value:"",
+language:"javascript",
+theme:"vs-dark",
+automaticLayout:true,
+minimap:{enabled:false},
+quickSuggestions:true,
+suggestOnTriggerCharacters:true
+});
 });
 
-document.getElementById("newFile").onclick = newFile;
-document.getElementById("saveAll").onclick = saveStorage;
-document.getElementById("toolsBtn").onclick = () => {
-  const menu = document.getElementById("dropdownMenu");
-  menu.style.display =
-    menu.style.display === "flex" ? "none" : "flex";
-};
-document.getElementById("indentBtn").onclick = indentCode;
-document.getElementById("minifyBtn").onclick = minifyCode;
-document.getElementById("optimizeBtn").onclick = optimizeCode;
+function format(){
+editor.setValue(editor.getValue().replace(/;/g,";\n"))
+}
+
+function save(){
+localStorage.setItem("code",editor.getValue())
+}
 </script>
 </body>
 </html>
